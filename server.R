@@ -4,10 +4,13 @@ library(highcharter)
 # what's next?
 # --replace plot with plotly or similar
 # metrics: potatoes/sec into storage
-# fluctuating sell prices
-# storage limit + upgrades
-# auto-planter
-# auto-seller
+# canceled because of complications with sellers: fluctuating sell prices
+# canceled because fluctuating sell prices canceled:storage limit + upgrades
+# --auto-planter
+# --auto-seller
+# improved layout
+# worker wages
+# more upgrades: marketing (increase sell price)
 
 
 server <- function(input, output, session) {
@@ -32,7 +35,7 @@ server <- function(input, output, session) {
   planters = reactiveVal(0)
   harvesters = reactiveVal(0)
   sellers = reactiveVal(0)
-  worker_check = reactiveTimer(100, session)
+  worker_check = reactiveTimer(150, session)
   
   # crops
   price_plant_crop = 1
@@ -44,15 +47,26 @@ server <- function(input, output, session) {
   planted_crops = reactiveVal(0)
   harvestable_crops = reactiveVal(0)
   harvested_crops = reactiveVal(0)
-  crop_growth_check = reactiveTimer(100, session)
+  crop_growth_check = reactiveTimer(150, session)
   
   observe({
     worker_check()
     isolate({
-      req(harvesters() > 0 && harvestable_crops() > 0)
-      harvested = min(harvestable_crops(), harvesters())
-      harvestable_crops(harvestable_crops() - harvested)
-      harvested_crops(harvested_crops() + harvested)  
+      if (planters() > 0 && cash() > 0) {
+        count = min(planters(), cash() / price_plant_crop)
+        planted_crops(planted_crops() + count)
+        cash(cash() - count * price_plant_crop)
+      }
+      if (harvesters() > 0 && harvestable_crops() > 0) {
+        count = min(harvestable_crops(), harvesters())
+        harvestable_crops(harvestable_crops() - count)
+        harvested_crops(harvested_crops() + count)  
+      }
+      if (sellers() > 0 && harvested_crops() > 0) {
+        count = min(harvested_crops(), sellers())
+        harvested_crops(harvested_crops() - count)
+        cash(cash() + count * price_sell_crop)
+      }
     })
   })
   
@@ -75,7 +89,7 @@ server <- function(input, output, session) {
         grown = round(1 + (planted_crops() * random))
       }
       
-      if (grown > 0) {
+      if (grown > 0 && planted_crops() > grown) {
         planted_crops(planted_crops() - grown)
         harvestable_crops(harvestable_crops() + extra_crops_multiplier() * grown)
       }
@@ -107,11 +121,25 @@ server <- function(input, output, session) {
     cash(cash() + count * price_sell_crop)
   })
   
-  observeEvent(input$worker_hire, {
+  observeEvent(input$planter_hire, {
+    req(cash() >= price_buy_planter())
+    cash(cash() - price_buy_planter())
+    planters(planters() + 1)
+    price_buy_planter(price_buy_planter() * 1.23)
+  })
+  
+  observeEvent(input$harvester_hire, {
     req(cash() >= price_buy_harvester())
     cash(cash() - price_buy_harvester())
     harvesters(harvesters() + 1)
     price_buy_harvester(price_buy_harvester() * 1.23)
+  })
+  
+  observeEvent(input$seller_hire, {
+    req(cash() >= price_buy_seller())
+    cash(cash() - price_buy_seller())
+    sellers(sellers() + 1)
+    price_buy_seller(price_buy_seller() * 1.23)
   })
   
   observeEvent(input$improve_planting, {
@@ -160,13 +188,17 @@ server <- function(input, output, session) {
   })
   
   output$worker_table <- renderTable({
-    data.frame(hired = harvesters())
+    data.frame(planters = planters(), harvesters = harvesters(), sellers = sellers())
   })
   
   output$power_up <- renderUI({
     div(
+      h5("Hire a planter"),
+      actionButton("planter_hire", paste0("$", round(price_buy_planter(), 2))),
       h5("Hire a harvester"),
-      actionButton("worker_hire", paste0("$", round(price_buy_harvester(), 2))),
+      actionButton("harvester_hire", paste0("$", round(price_buy_harvester(), 2))),
+      h5("Hire a seller"),
+      actionButton("seller_hire", paste0("$", round(price_buy_seller(), 2))),
       h5("Plant an extra potato"),
       actionButton("improve_planting", paste0("$", round(price_improve_planting(), 2))),
       h5("Sell an extra potato"),
