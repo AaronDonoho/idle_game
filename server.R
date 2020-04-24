@@ -1,9 +1,21 @@
 library(shiny)
+library(highcharter)
+
+# what's next?
+# --replace plot with plotly or similar
+# metrics: potatoes/sec into storage
+# fluctuating sell prices
+# storage limit + upgrades
+# auto-planter
+# auto-seller
+
 
 server <- function(input, output, session) {
+  # cash
   cash_history = reactiveVal(c())
   cash = reactiveVal(100)
   
+  # player upgrades
   plant_quantity = reactiveVal(1)
   sell_quantity = reactiveVal(1)
   price_improve_planting = reactiveVal(10)
@@ -13,25 +25,32 @@ server <- function(input, output, session) {
   price_improve_growth = reactiveVal(10)
   growth_multiplier = reactiveVal(1)
   
+  # workers
+  price_buy_planter = reactiveVal(10)
+  price_buy_harvester = reactiveVal(10)
+  price_buy_seller = reactiveVal(10)
+  planters = reactiveVal(0)
+  harvesters = reactiveVal(0)
+  sellers = reactiveVal(0)
+  worker_check = reactiveTimer(100, session)
+  
+  # crops
   price_plant_crop = 1
   price_sell_crop = 2
   crop_name = "Potato"
   crop_name_plural = "Potatoes"
   
-  price_buy_worker = reactiveVal(10)
-  workers = reactiveVal(0)
-  worker_check = reactiveTimer(1000, session)
-  
+  # storage
   planted_crops = reactiveVal(0)
   harvestable_crops = reactiveVal(0)
   harvested_crops = reactiveVal(0)
-  crop_growth_check = reactiveTimer(1000, session)
+  crop_growth_check = reactiveTimer(100, session)
   
   observe({
     worker_check()
     isolate({
-      req(workers() > 0 && harvestable_crops() > 0)
-      harvested = min(harvestable_crops(), workers())
+      req(harvesters() > 0 && harvestable_crops() > 0)
+      harvested = min(harvestable_crops(), harvesters())
       harvestable_crops(harvestable_crops() - harvested)
       harvested_crops(harvested_crops() + harvested)  
     })
@@ -89,10 +108,10 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$worker_hire, {
-    req(cash() >= price_buy_worker())
-    cash(cash() - price_buy_worker())
-    workers(workers() + 1)
-    price_buy_worker(price_buy_worker() * 1.23)
+    req(cash() >= price_buy_harvester())
+    cash(cash() - price_buy_harvester())
+    harvesters(harvesters() + 1)
+    price_buy_harvester(price_buy_harvester() * 1.23)
   })
   
   observeEvent(input$improve_planting, {
@@ -141,13 +160,13 @@ server <- function(input, output, session) {
   })
   
   output$worker_table <- renderTable({
-    data.frame(hired = workers())
+    data.frame(hired = harvesters())
   })
   
   output$power_up <- renderUI({
     div(
       h5("Hire a harvester"),
-      actionButton("worker_hire", paste0("$", round(price_buy_worker(), 2))),
+      actionButton("worker_hire", paste0("$", round(price_buy_harvester(), 2))),
       h5("Plant an extra potato"),
       actionButton("improve_planting", paste0("$", round(price_improve_planting(), 2))),
       h5("Sell an extra potato"),
@@ -159,8 +178,11 @@ server <- function(input, output, session) {
     )
   })
   
-  output$cash_plot <- renderPlot({
-    plot(1:length(cash_history()), cash_history(), type = 's', xlab = '', ylab = '')
+  output$cash_plot <- renderHighchart({
+    highchart() %>%
+      hc_add_series(cash_history()) %>%
+      hc_add_theme(hc_theme_darkunica()) %>%
+      hc_plotOptions(series = list(animation = FALSE))
   })
   
 }

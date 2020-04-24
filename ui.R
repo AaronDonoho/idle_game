@@ -20,6 +20,6 @@ ui <- fluidPage(
            tableOutput("worker_table")),
     column(3,
            h3("Cash"),
-           plotOutput("cash_plot"))
+           highchartOutput("cash_plot"))
   )
 )
