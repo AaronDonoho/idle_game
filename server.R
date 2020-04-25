@@ -1,6 +1,5 @@
 library(shiny)
 library(highcharter)
-library(tm)
 
 # what's next?
 # --replace plot with plotly or similar
@@ -54,13 +53,11 @@ server <- function(input, output, session) {
   growth_multiplier = reactiveVal(1)
   
   # workers
-  price_buy_planter = reactiveVal(50)
-  price_buy_harvester = reactiveVal(10)
-  price_buy_seller = reactiveVal(10)
-  planters = reactiveVal(0)
-  harvesters = reactiveVal(0)
-  sellers = reactiveVal(0)
   worker_check = reactiveTimer(4 * tick_rate, session)
+  
+  planters = Planters$new()
+  harvesters = Harvesters$new()
+  sellers = Sellers$new()
   
   # crops
   price_plant_crop = 0
@@ -77,18 +74,18 @@ server <- function(input, output, session) {
   observe({
     worker_check()
     isolate({
-      if (planters() > 0 && cash() > 0) {
-        count = min(planters(), cash() / price_plant_crop)
+      if (planters$count() > 0 && cash() > 0) {
+        count = min(planters$count(), cash() / price_plant_crop)
         planted_crops(planted_crops() + count)
         cash(cash() - count * price_plant_crop)
       }
-      if (harvesters() > 0 && harvestable_crops() > 0) {
-        count = min(harvestable_crops(), harvesters())
+      if (harvesters$count() > 0 && harvestable_crops() > 0) {
+        count = min(harvestable_crops(), harvesters$count())
         harvestable_crops(harvestable_crops() - count)
         harvested_crops(harvested_crops() + count)  
       }
-      if (sellers() > 0 && harvested_crops() > 0) {
-        count = min(harvested_crops(), sellers())
+      if (sellers$count() > 0 && harvested_crops() > 0) {
+        count = min(harvested_crops(), sellers$count())
         harvested_crops(harvested_crops() - count)
         cash(cash() + count * price_sell_crop)
       }
@@ -130,10 +127,7 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$plant_crop, {
-    req(cash() >= price_plant_crop)
-    count = min(plant_quantity(), cash() / price_plant_crop)
-    cash(cash() - count * price_plant_crop)
-    planted_crops(planted_crops() + count)
+    planted_crops(planted_crops() + plant_quantity())
   })
   
   observeEvent(input$harvest_crop, {
@@ -168,35 +162,25 @@ server <- function(input, output, session) {
   })
   
   output$worker_table <- renderTable({
-    data.frame(planters = planters(), harvesters = harvesters(), sellers = sellers())
+    data.frame(planters = planters$count(), harvesters = harvesters$count(), sellers = sellers$count())
   })
   
-  g_purchasable = FunctionGenerator(
-    function(event, item, price, gain_add = 1, gain_mult = 1, cost_add = 0, cost_mult = 1) {
-      observeEvent(input[[event]], {
-        req(cash() >= price())
-        cash(cash() - price())
-        item((item() + gain_add) * gain_mult)
-        price((price() + cost_add) * cost_mult)
-      })
-    })
-  
-  g_purchasable('planter_hire', planters, price_buy_planter, cost_mult = 1.23)
-  g_purchasable('harvester_hire', harvesters, price_buy_harvester, cost_mult = 1.23)
-  g_purchasable('seller_hire', sellers, price_buy_seller, cost_mult = 1.23)
-  g_purchasable('improve_planting', plant_quantity, price_improve_planting, cost_mult = 1.15)
-  g_purchasable('improve_selling', sell_quantity, price_improve_selling, cost_mult = 1.2)
-  g_purchasable('improve_growth', growth_multiplier, price_improve_growth, 0, gain_mult = 1.1, cost_mult = 1.58)
-  g_purchasable('improve_extra_crops', extra_crops_multiplier, price_improve_extra_crops, 0, gain_mult = 1.08, cost_mult = 1.43)
+  g_purchasable(input, cash, 'planter_hire', planters)
+  g_purchasable(input, cash, 'harvester_hire', harvesters)
+  g_purchasable(input, cash, 'seller_hire', sellers)
+  # g_purchasable(input, cash, 'improve_planting', plant_quantity, price_improve_planting, cost_mult = 1.15)
+  # g_purchasable(input, cash, 'improve_selling', sell_quantity, price_improve_selling, cost_mult = 1.2)
+  # g_purchasable(input, cash, 'improve_growth', growth_multiplier, price_improve_growth, 0, gain_mult = 1.1, cost_mult = 1.58)
+  # g_purchasable(input, cash, 'improve_extra_crops', extra_crops_multiplier, price_improve_extra_crops, 0, gain_mult = 1.08, cost_mult = 1.43)
   
   output$power_up <- renderUI({
     div(
       h5("Hire a planter"),
-      actionButton("planter_hire", paste0("$", round(price_buy_planter(), 2))),
+      actionButton("planter_hire", paste0("$", round(planters$price$.(), 2))),
       h5("Hire a harvester"),
-      actionButton("harvester_hire", paste0("$", round(price_buy_harvester(), 2))),
+      actionButton("harvester_hire", paste0("$", round(harvesters$price$.(), 2))),
       h5("Hire a seller"),
-      actionButton("seller_hire", paste0("$", round(price_buy_seller(), 2))),
+      actionButton("seller_hire", paste0("$", round(sellers$price$.(), 2))),
       h5("Plant an extra potato"),
       actionButton("improve_planting", paste0("$", round(price_improve_planting(), 2))),
       h5("Sell an extra potato"),
