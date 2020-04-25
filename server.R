@@ -1,5 +1,6 @@
 library(shiny)
 library(highcharter)
+library(tm)
 
 # what's next?
 # --replace plot with plotly or similar
@@ -37,9 +38,9 @@ server <- function(input, output, session) {
   cash_history = c()
   cashplot = reactiveVal(
     highchart() %>%
-    hc_add_series(name = 'cash', data = cash_history) %>%
-    hc_add_theme(hc_theme_darkunica()) %>%
-    hc_plotOptions(series = list(animation = FALSE))
+      hc_add_series(name = 'cash', data = cash_history) %>%
+      hc_add_theme(hc_theme_darkunica()) %>%
+      hc_plotOptions(series = list(animation = FALSE))
   )
   
   # player upgrades
@@ -113,8 +114,7 @@ server <- function(input, output, session) {
         grown = round(1 + (planted_crops() * random * 0.1))
       }
       
-      if (grown > 0) { #&& planted_crops() > grown) {
-        # planted_crops(planted_crops() - grown)
+      if (grown > 0) {
         harvestable_crops(harvestable_crops() + extra_crops_multiplier() * grown)
       }
     })
@@ -124,8 +124,8 @@ server <- function(input, output, session) {
     cash_history <<- c(cash_history, cash())
     cashplot(
       cashplot() %>%
-      hc_rm_series('cash') %>%
-      hc_add_series(name = 'cash', data = cash_history)
+        hc_rm_series('cash') %>%
+        hc_add_series(name = 'cash', data = cash_history)
     )
   })
   
@@ -150,55 +150,6 @@ server <- function(input, output, session) {
     cash(cash() + count * price_sell_crop)
   })
   
-  observeEvent(input$planter_hire, {
-    req(cash() >= price_buy_planter())
-    cash(cash() - price_buy_planter())
-    planters(planters() + 1)
-    price_buy_planter(price_buy_planter() * 1.23)
-  })
-  
-  observeEvent(input$harvester_hire, {
-    req(cash() >= price_buy_harvester())
-    cash(cash() - price_buy_harvester())
-    harvesters(harvesters() + 1)
-    price_buy_harvester(price_buy_harvester() * 1.23)
-  })
-  
-  observeEvent(input$seller_hire, {
-    req(cash() >= price_buy_seller())
-    cash(cash() - price_buy_seller())
-    sellers(sellers() + 1)
-    price_buy_seller(price_buy_seller() * 1.23)
-  })
-  
-  observeEvent(input$improve_planting, {
-    req(cash() >= price_improve_planting())
-    cash(cash() - price_improve_planting())
-    plant_quantity(plant_quantity() + 1)
-    price_improve_planting(price_improve_planting() * 1.15) 
-  })
-  
-  observeEvent(input$improve_selling, {
-    req(cash() >= price_improve_selling())
-    cash(cash() - price_improve_selling())
-    sell_quantity(sell_quantity() + 1)
-    price_improve_selling(price_improve_selling() * 1.2) 
-  })
-  
-  observeEvent(input$improve_extra_crops, {
-    req(cash() >= price_improve_extra_crops())
-    cash(cash() - price_improve_extra_crops())
-    extra_crops_multiplier(extra_crops_multiplier() * 1.08)
-    price_improve_extra_crops(price_improve_extra_crops() * 1.43) 
-  })
-  
-  observeEvent(input$improve_growth, {
-    req(cash() >= price_improve_growth())
-    cash(cash() - price_improve_growth())
-    growth_multiplier(growth_multiplier() * 1.1)
-    price_improve_growth(price_improve_growth() * 1.58) 
-  })
-  
   output$cash <- renderText({
     paste0("Money: $", round(cash(), 2))
   })
@@ -219,6 +170,24 @@ server <- function(input, output, session) {
   output$worker_table <- renderTable({
     data.frame(planters = planters(), harvesters = harvesters(), sellers = sellers())
   })
+  
+  g_purchasable = FunctionGenerator(
+    function(event, item, price, gain_add = 1, gain_mult = 1, cost_add = 0, cost_mult = 1) {
+      observeEvent(input[[event]], {
+        req(cash() >= price())
+        cash(cash() - price())
+        item((item() + gain_add) * gain_mult)
+        price((price() + cost_add) * cost_mult)
+      })
+    })
+  
+  g_purchasable('planter_hire', planters, price_buy_planter, cost_mult = 1.23)
+  g_purchasable('harvester_hire', harvesters, price_buy_harvester, cost_mult = 1.23)
+  g_purchasable('seller_hire', sellers, price_buy_seller, cost_mult = 1.23)
+  g_purchasable('improve_planting', plant_quantity, price_improve_planting, cost_mult = 1.15)
+  g_purchasable('improve_selling', sell_quantity, price_improve_selling, cost_mult = 1.2)
+  g_purchasable('improve_growth', growth_multiplier, price_improve_growth, 0, gain_mult = 1.1, cost_mult = 1.58)
+  g_purchasable('improve_extra_crops', extra_crops_multiplier, price_improve_extra_crops, 0, gain_mult = 1.08, cost_mult = 1.43)
   
   output$power_up <- renderUI({
     div(
