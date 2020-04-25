@@ -9,14 +9,38 @@ library(highcharter)
 # --auto-planter
 # --auto-seller
 # improved layout
-# worker wages
-# more upgrades: marketing (increase sell price)
+# worker wages options:
+#   1. a running debt you can pay off
+#     what are the downsides of having debt?
+#       1. could build interest over time
+#       2. prevents you from performing certain actions
+#   2. a constant drain on funds
+#     what happens when money runs out?
+#       1. workers stop working
+#       2. workers quit 
+#       3. workers work as quickly as your funds will pay them
+# add a stock market - issuing shares, stock price, dividends, buy backs
+# --seed potatoes stick around to produce more
+# --planting should be free
+# use exponential view of time for plots
+# reduce network traffic usage
+# replace one-click upgrades with researchers
+# more upgrades: marketing (increase sell price), worker improvements
 
 
 server <- function(input, output, session) {
+  tick_rate = 150
+  
   # cash
-  cash_history = reactiveVal(c())
   cash = reactiveVal(100)
+  cash_check = reactiveTimer(1000, session)
+  cash_history = c()
+  cashplot = reactiveVal(
+    highchart() %>%
+    hc_add_series(name = 'cash', data = cash_history) %>%
+    hc_add_theme(hc_theme_darkunica()) %>%
+    hc_plotOptions(series = list(animation = FALSE))
+  )
   
   # player upgrades
   plant_quantity = reactiveVal(1)
@@ -29,16 +53,16 @@ server <- function(input, output, session) {
   growth_multiplier = reactiveVal(1)
   
   # workers
-  price_buy_planter = reactiveVal(10)
+  price_buy_planter = reactiveVal(50)
   price_buy_harvester = reactiveVal(10)
   price_buy_seller = reactiveVal(10)
   planters = reactiveVal(0)
   harvesters = reactiveVal(0)
   sellers = reactiveVal(0)
-  worker_check = reactiveTimer(150, session)
+  worker_check = reactiveTimer(4 * tick_rate, session)
   
   # crops
-  price_plant_crop = 1
+  price_plant_crop = 0
   price_sell_crop = 2
   crop_name = "Potato"
   crop_name_plural = "Potatoes"
@@ -47,7 +71,7 @@ server <- function(input, output, session) {
   planted_crops = reactiveVal(0)
   harvestable_crops = reactiveVal(0)
   harvested_crops = reactiveVal(0)
-  crop_growth_check = reactiveTimer(150, session)
+  crop_growth_check = reactiveTimer(1 * tick_rate, session)
   
   observe({
     worker_check()
@@ -80,24 +104,29 @@ server <- function(input, output, session) {
       grown = 0
       if (random < 0.002 * growth_multiplier()) {
         # up to 1 + 60%
-        grown = round(1 + planted_crops() * random * 300)
+        grown = round(1 + planted_crops() * random * 3)
       } else if (random < 0.02 * growth_multiplier()) {
         # up to 1 + 20%
-        grown = round(1 + planted_crops() * random * 10)
+        grown = round(1 + planted_crops() * random * 0.5)
       } else if (random < 0.1 * growth_multiplier()) {
         # up to 1 + 10%
-        grown = round(1 + (planted_crops() * random))
+        grown = round(1 + (planted_crops() * random * 0.1))
       }
       
-      if (grown > 0 && planted_crops() > grown) {
-        planted_crops(planted_crops() - grown)
+      if (grown > 0) { #&& planted_crops() > grown) {
+        # planted_crops(planted_crops() - grown)
         harvestable_crops(harvestable_crops() + extra_crops_multiplier() * grown)
       }
     })
   })
   
-  observeEvent(crop_growth_check(), {
-    cash_history(append(cash_history(), cash()))
+  observeEvent(cash_check(), {
+    cash_history <<- c(cash_history, cash())
+    cashplot(
+      cashplot() %>%
+      hc_rm_series('cash') %>%
+      hc_add_series(name = 'cash', data = cash_history)
+    )
   })
   
   observeEvent(input$plant_crop, {
@@ -211,10 +240,7 @@ server <- function(input, output, session) {
   })
   
   output$cash_plot <- renderHighchart({
-    highchart() %>%
-      hc_add_series(cash_history()) %>%
-      hc_add_theme(hc_theme_darkunica()) %>%
-      hc_plotOptions(series = list(animation = FALSE))
+    cashplot()
   })
   
 }
