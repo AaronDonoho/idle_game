@@ -43,10 +43,8 @@ server <- function(input, output, session) {
   )
   
   # player upgrades
-  plant_quantity = reactiveVal(1)
-  sell_quantity = reactiveVal(1)
-  price_improve_planting = reactiveVal(10)
-  price_improve_selling = reactiveVal(10)
+  plant_quantity = PlantQuantity$new()
+  sell_quantity = SellQuantity$new()
   price_improve_extra_crops = reactiveVal(10)
   extra_crops_multiplier = reactiveVal(1)
   price_improve_growth = reactiveVal(10)
@@ -127,7 +125,7 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$plant_crop, {
-    planted_crops(planted_crops() + plant_quantity())
+    planted_crops(planted_crops() + plant_quantity$count())
   })
   
   observeEvent(input$harvest_crop, {
@@ -139,7 +137,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$sell_crop, {
     req(harvested_crops() > 0)
-    count = min(harvested_crops(), sell_quantity())
+    count = min(harvested_crops(), sell_quantity$count())
     harvested_crops(harvested_crops() - count)
     cash(cash() + count * price_sell_crop)
   })
@@ -168,8 +166,8 @@ server <- function(input, output, session) {
   g_purchasable(input, cash, 'planter_hire', planters)
   g_purchasable(input, cash, 'harvester_hire', harvesters)
   g_purchasable(input, cash, 'seller_hire', sellers)
-  # g_purchasable(input, cash, 'improve_planting', plant_quantity, price_improve_planting, cost_mult = 1.15)
-  # g_purchasable(input, cash, 'improve_selling', sell_quantity, price_improve_selling, cost_mult = 1.2)
+  g_purchasable(input, cash, 'improve_planting', plant_quantity)
+  g_purchasable(input, cash, 'improve_selling', sell_quantity)
   # g_purchasable(input, cash, 'improve_growth', growth_multiplier, price_improve_growth, 0, gain_mult = 1.1, cost_mult = 1.58)
   # g_purchasable(input, cash, 'improve_extra_crops', extra_crops_multiplier, price_improve_extra_crops, 0, gain_mult = 1.08, cost_mult = 1.43)
   
@@ -182,9 +180,9 @@ server <- function(input, output, session) {
       h5("Hire a seller"),
       actionButton("seller_hire", paste0("$", round(sellers$price$.(), 2))),
       h5("Plant an extra potato"),
-      actionButton("improve_planting", paste0("$", round(price_improve_planting(), 2))),
+      actionButton("improve_planting", paste0("$", round(plant_quantity$price$.(), 2))),
       h5("Sell an extra potato"),
-      actionButton("improve_selling", paste0("$", round(price_improve_selling(), 2))),
+      actionButton("improve_selling", paste0("$", round(sell_quantity$price$.(), 2))),
       h5("Researching new seeds increases potato yields by 8%"),
       actionButton("improve_extra_crops", paste0("$", round(price_improve_extra_crops(), 2))),
       h5("Fertilizer improves chance for potatoes to mature by 10%"),
