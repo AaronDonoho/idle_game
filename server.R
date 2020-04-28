@@ -68,6 +68,7 @@ server <- function(input, output, session) {
   planted_crops = reactiveVal(0)
   harvestable_crops = reactiveVal(0)
   harvested_crops = reactiveVal(0)
+  total_crops = reactiveVal(0)
   crop_growth_check = reactiveTimer(1 * tick_rate, session)
   
   observe({
@@ -87,6 +88,7 @@ server <- function(input, output, session) {
         count = min(harvested_crops(), sellers$count())
         harvested_crops(harvested_crops() - count)
         cash(cash() + count * price_sell_crop)
+        total_crops(total_crops() + count)
       }
     })
   })
@@ -134,6 +136,7 @@ server <- function(input, output, session) {
     count = min(1, harvestable_crops())
     harvestable_crops(harvestable_crops() - count)
     harvested_crops(harvested_crops() + count)
+    total_crops(total_crops() + count)
   })
   
   observeEvent(input$sell_crop, {
@@ -157,7 +160,7 @@ server <- function(input, output, session) {
   })
   
   output$crop_table <- renderTable({
-    data.frame(growing = planted_crops(), mature = harvestable_crops(), storage = harvested_crops())
+    data.frame(growing = planted_crops(), mature = harvestable_crops(), storage = harvested_crops(), sold = total_crops())
   })
   
   output$worker_table <- renderTable({

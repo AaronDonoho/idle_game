@@ -71,7 +71,7 @@ GrowthMultiplier = R6Class(
   "GrowthMultiplier",
   inherit = Purchasable,
   public = list(
-    initialize = function(price = Price$new(150, 0, 1.65), count = 0, gain_mult = 1.08) {
+    initialize = function(price = Price$new(150, 0, 1.65), count = 1, gain_mult = 1.08) {
       super$initialize(price, count)
     }
   )
@@ -81,7 +81,7 @@ CropsMultiplier = R6Class(
   "CropsMultiplier",
   inherit = Purchasable,
   public = list(
-    initialize = function(price = Price$new(300, 0, 1.52), count = 0, gain_mult = 1.1) {
+    initialize = function(price = Price$new(300, 0, 1.52), count = 1, gain_mult = 1.1) {
       super$initialize(price, count)
     }
   )
