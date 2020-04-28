@@ -26,13 +26,16 @@ library(highcharter)
 # reduce network traffic usage
 # replace one-click upgrades with researchers
 # more upgrades: marketing (increase sell price), worker improvements
-
+# meaningful choices:
+# expanding lands vs receiving benefits from that country
+# dna + mutations 
+# random events (+ resistance to bad events such as drought, disease, insects... via mutations or research)
 
 server <- function(input, output, session) {
   tick_rate = 150
   
   # cash
-  cash = reactiveVal(100)
+  cash = reactiveVal(500)
   cash_check = reactiveTimer(1000, session)
   cash_history = c()
   cashplot = reactiveVal(
@@ -45,10 +48,8 @@ server <- function(input, output, session) {
   # player upgrades
   plant_quantity = PlantQuantity$new()
   sell_quantity = SellQuantity$new()
-  price_improve_extra_crops = reactiveVal(10)
-  extra_crops_multiplier = reactiveVal(1)
-  price_improve_growth = reactiveVal(10)
-  growth_multiplier = reactiveVal(1)
+  crops_multiplier = CropsMultiplier$new()
+  growth_multiplier = GrowthMultiplier$new()
   
   # workers
   worker_check = reactiveTimer(4 * tick_rate, session)
@@ -98,19 +99,19 @@ server <- function(input, output, session) {
       random = runif(1, 0, 1)
       
       grown = 0
-      if (random < 0.002 * growth_multiplier()) {
+      if (random < 0.002 * growth_multiplier$count()) {
         # up to 1 + 60%
         grown = round(1 + planted_crops() * random * 3)
-      } else if (random < 0.02 * growth_multiplier()) {
+      } else if (random < 0.02 * growth_multiplier$count()) {
         # up to 1 + 20%
         grown = round(1 + planted_crops() * random * 0.5)
-      } else if (random < 0.1 * growth_multiplier()) {
+      } else if (random < 0.1 * growth_multiplier$count()) {
         # up to 1 + 10%
         grown = round(1 + (planted_crops() * random * 0.1))
       }
       
       if (grown > 0) {
-        harvestable_crops(harvestable_crops() + extra_crops_multiplier() * grown)
+        harvestable_crops(harvestable_crops() + crops_multiplier$count() * grown)
       }
     })
   })
@@ -168,9 +169,9 @@ server <- function(input, output, session) {
   g_purchasable(input, cash, 'seller_hire', sellers)
   g_purchasable(input, cash, 'improve_planting', plant_quantity)
   g_purchasable(input, cash, 'improve_selling', sell_quantity)
-  # g_purchasable(input, cash, 'improve_growth', growth_multiplier, price_improve_growth, 0, gain_mult = 1.1, cost_mult = 1.58)
-  # g_purchasable(input, cash, 'improve_extra_crops', extra_crops_multiplier, price_improve_extra_crops, 0, gain_mult = 1.08, cost_mult = 1.43)
-  
+  g_purchasable(input, cash, 'improve_growth', growth_multiplier)
+  g_purchasable(input, cash, 'improve_extra_crops', crops_multiplier)
+
   output$power_up <- renderUI({
     div(
       h5("Hire a planter"),
@@ -184,9 +185,9 @@ server <- function(input, output, session) {
       h5("Sell an extra potato"),
       actionButton("improve_selling", paste0("$", round(sell_quantity$price$.(), 2))),
       h5("Researching new seeds increases potato yields by 8%"),
-      actionButton("improve_extra_crops", paste0("$", round(price_improve_extra_crops(), 2))),
+      actionButton("improve_extra_crops", paste0("$", round(crops_multiplier$price$.(), 2))),
       h5("Fertilizer improves chance for potatoes to mature by 10%"),
-      actionButton("improve_growth", paste0("$", round(price_improve_growth(), 2)))
+      actionButton("improve_growth", paste0("$", round(growth_multiplier$price$.(), 2)))
     )
   })
   
