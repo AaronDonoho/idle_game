@@ -6,6 +6,7 @@ library(highcharter)
 # metrics: potatoes/sec into storage
 # canceled because of complications with sellers: fluctuating sell prices
 # canceled because fluctuating sell prices canceled:storage limit + upgrades
+# canceled exponential view of time for plots; replaced with pruning
 # --auto-planter
 # --auto-seller
 # improved layout
@@ -22,8 +23,8 @@ library(highcharter)
 # add a stock market - issuing shares, stock price, dividends, buy backs
 # --seed potatoes stick around to produce more
 # --planting should be free
-# use exponential view of time for plots
 # reduce network traffic usage
+# prune the data for plots
 # random events (+ resistance to bad events such as drought, disease, insects... via mutations or research)
 # replace one-click upgrades with researchers
 # more upgrades: marketing (increase sell price), worker improvements
@@ -184,21 +185,31 @@ server <- function(input, output, session) {
   g_purchasable(input, cash, 'improve_growth', growth_multiplier)
   g_purchasable(input, cash, 'improve_extra_crops', crops_multiplier)
 
-  output$power_up <- renderUI({
+  output$hiring <- renderUI({
     div(
-      h5("Hire a planter"),
+      h4("Hire a planter"),
       actionButton("planter_hire", paste0("$", round(planters$price$.(), 2))),
-      h5("Hire a harvester"),
+      h4("Hire a harvester"),
       actionButton("harvester_hire", paste0("$", round(harvesters$price$.(), 2))),
-      h5("Hire a seller"),
-      actionButton("seller_hire", paste0("$", round(sellers$price$.(), 2))),
-      h5("Plant an extra potato"),
+      h4("Hire a seller"),
+      actionButton("seller_hire", paste0("$", round(sellers$price$.(), 2)))
+    )
+  })
+  
+  output$enhancements <- renderUI({
+    div(
+      h4("Plant an extra potato"),
       actionButton("improve_planting", paste0("$", round(plant_quantity$price$.(), 2))),
-      h5("Sell an extra potato"),
-      actionButton("improve_selling", paste0("$", round(sell_quantity$price$.(), 2))),
-      h5("Researching new seeds increases potato yields by 8%"),
+      h4("Sell an extra potato"),
+      actionButton("improve_selling", paste0("$", round(sell_quantity$price$.(), 2)))
+    )
+  })
+  
+  output$research <- renderUI({
+    div(
+      h4("Researching new seeds increases potato yields by 8%"),
       actionButton("improve_extra_crops", paste0("$", round(crops_multiplier$price$.(), 2))),
-      h5("Fertilizer improves chance for potatoes to mature by 10%"),
+      h4("Fertilizer improves chance for potatoes to mature by 10%"),
       actionButton("improve_growth", paste0("$", round(growth_multiplier$price$.(), 2)))
     )
   })

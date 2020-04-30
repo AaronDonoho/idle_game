@@ -1,25 +1,43 @@
 library(shiny)
+library(shinythemes)
 
 ui <- fluidPage(
+  theme = shinythemes::shinytheme("superhero"),
+  includeCSS("./styles.css"),
   fluidRow(
-    column(3,
-           textOutput("cash"),
-           verbatimTextOutput("crop_info"),
-           actionButton("plant_crop", "Plant"),
-           br(),
-           actionButton("harvest_crop", "Harvest"),
-           br(),
-           actionButton("sell_crop", "Sell"),
-           uiOutput("power_up")
+    column(
+      4,
+      textOutput("cash"),
+      verbatimTextOutput("crop_info"),
+      actionButton("plant_crop", "Plant"),
+      actionButton("harvest_crop", "Harvest"),
+      actionButton("sell_crop", "Sell"),
+      br(), br(),
+      tabsetPanel(
+       type = "tabs",
+       tabPanel(
+         "Hiring",
+         uiOutput("hiring") 
+       ),
+       tabPanel(
+         "Enhancements",
+         uiOutput("enhancements") 
+       ),
+       tabPanel(
+         "Research",
+         uiOutput("research") 
+       )
+      )
     ),
-    column(3,
-           uiOutput("table_header"),
-           tableOutput("crop_table")),
-    column(3,
-           h3("Workers"),
-           tableOutput("worker_table")),
-    column(3,
-           h3("Potatoes sold per second"),
-           highchartOutput("psps_plot"))
+    column(
+      4,
+      uiOutput("table_header"),
+      tableOutput("crop_table"),
+      h3("Workers"),
+      tableOutput("worker_table")),
+    column(
+      4,
+      h3("Potatoes sold per second"),
+      highchartOutput("psps_plot"))
   )
 )
