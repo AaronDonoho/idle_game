@@ -24,23 +24,27 @@ library(highcharter)
 # --planting should be free
 # use exponential view of time for plots
 # reduce network traffic usage
+# random events (+ resistance to bad events such as drought, disease, insects... via mutations or research)
 # replace one-click upgrades with researchers
 # more upgrades: marketing (increase sell price), worker improvements
 # meaningful choices:
-# expanding lands vs receiving benefits from that country
-# dna + mutations 
-# random events (+ resistance to bad events such as drought, disease, insects... via mutations or research)
+#   expanding lands vs receiving benefits from that country
+#   dna + mutations 
+#   abilities + skill trees involving physics (spacetime, matter/energy transformation, electromagnetism)
 
 server <- function(input, output, session) {
   tick_rate = 150
   
   # cash
-  cash = reactiveVal(500)
+  starting_cash = 500
+  crops_sold = 0
+  cash = reactiveVal(starting_cash)
   cash_check = reactiveTimer(1000, session)
-  cash_history = c()
-  cashplot = reactiveVal(
+  revenue_history = list(c(1, 0))
+  revenue_plot = reactiveVal(
     highchart() %>%
-      hc_add_series(name = 'cash', data = cash_history) %>%
+      hc_xAxis(title = list(text = "Time")) %>%
+      hc_add_series(name = 'psps', data = revenue_history) %>%
       hc_add_theme(hc_theme_darkunica()) %>%
       hc_plotOptions(series = list(animation = FALSE))
   )
@@ -89,6 +93,7 @@ server <- function(input, output, session) {
         harvested_crops(harvested_crops() - count)
         cash(cash() + count * price_sell_crop)
         total_crops(total_crops() + count)
+        crops_sold <<- crops_sold + count
       }
     })
   })
@@ -119,11 +124,14 @@ server <- function(input, output, session) {
   })
   
   observeEvent(cash_check(), {
-    cash_history <<- c(cash_history, cash())
-    cashplot(
-      cashplot() %>%
-        hc_rm_series('cash') %>%
-        hc_add_series(name = 'cash', data = cash_history)
+    n = length(revenue_history) + 1
+    revenue_history[[n]] = c(n, crops_sold)
+    revenue_history <<- revenue_history
+    crops_sold <<- 0
+    revenue_plot(
+      revenue_plot() %>%
+        hc_rm_series('psps') %>%
+        hc_add_series(name = 'psps', data = revenue_history)
     )
   })
   
@@ -144,6 +152,7 @@ server <- function(input, output, session) {
     count = min(harvested_crops(), sell_quantity$count())
     harvested_crops(harvested_crops() - count)
     cash(cash() + count * price_sell_crop)
+    crops_sold <<- crops_sold + count
   })
   
   output$cash <- renderText({
@@ -194,8 +203,8 @@ server <- function(input, output, session) {
     )
   })
   
-  output$cash_plot <- renderHighchart({
-    cashplot()
+  output$psps_plot <- renderHighchart({
+    revenue_plot()
   })
   
 }
