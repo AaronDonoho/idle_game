@@ -1,5 +1,6 @@
 library(shiny)
 library(highcharter)
+library(splines)
 
 # what's next?
 # --replace plot with plotly or similar
@@ -34,21 +35,14 @@ library(highcharter)
 #   abilities + skill trees involving physics (spacetime, matter/energy transformation, electromagnetism)
 
 server <- function(input, output, session) {
+  # timers
   tick_rate = 150
+  cash_check = reactiveTimer(100, session)
+  crop_growth_check = reactiveTimer(1 * tick_rate, session)
+  worker_check = reactiveTimer(4 * tick_rate, session)
   
   # cash
-  starting_cash = 500
-  crops_sold = 0
-  cash = reactiveVal(starting_cash)
-  cash_check = reactiveTimer(1000, session)
-  revenue_history = list(c(1, 0))
-  revenue_plot = reactiveVal(
-    highchart() %>%
-      hc_xAxis(title = list(text = "Time")) %>%
-      hc_add_series(name = 'psps', data = revenue_history) %>%
-      hc_add_theme(hc_theme_darkunica()) %>%
-      hc_plotOptions(series = list(animation = FALSE))
-  )
+  cash = reactiveVal(500)
   
   # player upgrades
   plant_quantity = PlantQuantity$new()
@@ -57,8 +51,6 @@ server <- function(input, output, session) {
   growth_multiplier = GrowthMultiplier$new()
   
   # workers
-  worker_check = reactiveTimer(4 * tick_rate, session)
-  
   planters = Planters$new()
   harvesters = Harvesters$new()
   sellers = Sellers$new()
@@ -68,36 +60,58 @@ server <- function(input, output, session) {
   price_sell_crop = 2
   crop_name = "Potato"
   crop_name_plural = "Potatoes"
+  crops_sold = 0
+  sold_history = c()
+  sold_plot = reactiveVal(
+    highchart() %>%
+      hc_xAxis(title = list(text = "Time")) %>%
+      hc_yAxis(min = 0) %>%
+      hc_add_theme(hc_theme_darkunica()) %>%
+      hc_plotOptions(series = list(animation = FALSE))
+  )
   
   # storage
   planted_crops = reactiveVal(0)
-  harvestable_crops = reactiveVal(0)
-  harvested_crops = reactiveVal(0)
+  mature_crops = reactiveVal(0)
+  stored_crops = reactiveVal(0)
   total_crops = reactiveVal(0)
-  crop_growth_check = reactiveTimer(1 * tick_rate, session)
   
   observe({
     worker_check()
     isolate({
       if (planters$count() > 0 && cash() > 0) {
-        count = min(planters$count(), cash() / price_plant_crop)
-        planted_crops(planted_crops() + count)
-        cash(cash() - count * price_plant_crop)
+        plant_crops(planters$count())
       }
-      if (harvesters$count() > 0 && harvestable_crops() > 0) {
-        count = min(harvestable_crops(), harvesters$count())
-        harvestable_crops(harvestable_crops() - count)
-        harvested_crops(harvested_crops() + count)  
+      if (harvesters$count() > 0 && mature_crops() > 0) {
+        harvest_crops(harvesters$count())
       }
-      if (sellers$count() > 0 && harvested_crops() > 0) {
-        count = min(harvested_crops(), sellers$count())
-        harvested_crops(harvested_crops() - count)
-        cash(cash() + count * price_sell_crop)
-        total_crops(total_crops() + count)
-        crops_sold <<- crops_sold + count
+      if (sellers$count() > 0 && stored_crops() > 0) {
+        sell_crops(sellers$count())
       }
     })
   })
+  
+  plant_crops = function(quantity) {
+    count = min(quantity, cash() / price_plant_crop)
+    planted_crops(planted_crops() + count)
+    cash(cash() - count * price_plant_crop)
+  }
+  
+  harvest_crops = function(quantity) {
+    req(mature_crops() > 0)
+    count = min(quantity, mature_crops())
+    mature_crops(mature_crops() - count)
+    stored_crops(stored_crops() + count)
+  }
+  
+  sell_crops = function(quantity) {
+    req(stored_crops() > 0)
+    count = min(quantity, stored_crops())
+    stored_crops(stored_crops() - count)
+    cash(cash() + count * price_sell_crop)
+    total_crops(total_crops() + count)
+    crops_sold <<- crops_sold + count
+  }
   
   observe({
     crop_growth_check()
@@ -119,41 +133,42 @@ server <- function(input, output, session) {
       }
       
       if (grown > 0) {
-        harvestable_crops(harvestable_crops() + crops_multiplier$count() * grown)
+        mature_crops(mature_crops() + crops_multiplier$count() * grown)
       }
     })
   })
   
   observeEvent(cash_check(), {
-    n = length(revenue_history) + 1
-    revenue_history[[n]] = c(n, crops_sold)
-    revenue_history <<- revenue_history
+    n = length(sold_history) + 1
+    sold_history[n] = crops_sold
+    sold_history <<- sold_history
     crops_sold <<- 0
-    revenue_plot(
-      revenue_plot() %>%
-        hc_rm_series('psps') %>%
-        hc_add_series(name = 'psps', data = revenue_history)
+    
+    req(n > 30)
+    
+    # if (n > 200) {
+    #   revenue_history <<- prune(revenue_history, 100)
+    # }
+    
+    spline = smooth.spline(sold_history, NULL, df=16)$y
+    
+    sold_plot(
+      sold_plot() %>%
+        hc_rm_series('spline') %>%
+        hc_add_series(name = 'spline', data = spline)
     )
   })
   
   observeEvent(input$plant_crop, {
-    planted_crops(planted_crops() + plant_quantity$count())
+    plant_crops(plant_quantity$count())
   })
   
   observeEvent(input$harvest_crop, {
-    req(harvestable_crops() > 0)
-    count = min(1, harvestable_crops())
-    harvestable_crops(harvestable_crops() - count)
-    harvested_crops(harvested_crops() + count)
-    total_crops(total_crops() + count)
+    harvest_crops(1)
   })
   
   observeEvent(input$sell_crop, {
-    req(harvested_crops() > 0)
-    count = min(harvested_crops(), sell_quantity$count())
-    harvested_crops(harvested_crops() - count)
-    cash(cash() + count * price_sell_crop)
-    crops_sold <<- crops_sold + count
+    sell_crops(sell_quantity$count())
   })
   
   output$cash <- renderText({
@@ -170,7 +185,7 @@ server <- function(input, output, session) {
   })
   
   output$crop_table <- renderTable({
-    data.frame(growing = planted_crops(), mature = harvestable_crops(), storage = harvested_crops(), sold = total_crops())
+    data.frame(growing = planted_crops(), mature = mature_crops(), storage = stored_crops(), sold = total_crops())
   })
   
   output$worker_table <- renderTable({
@@ -215,7 +230,7 @@ server <- function(input, output, session) {
   })
   
   output$psps_plot <- renderHighchart({
-    revenue_plot()
+    sold_plot()
   })
   
 }

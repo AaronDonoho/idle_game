@@ -13,3 +13,8 @@ g_purchasable = FunctionGenerator(
     })
   }
 )
+
+prune = function(data, limit) {
+  pruned = data[c(round(seq(1, length(data), length(data) / limit)))]
+  return(pruned)
+}
