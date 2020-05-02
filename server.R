@@ -4,7 +4,7 @@ library(splines)
 
 # what's next?
 # --replace plot with plotly or similar
-# metrics: potatoes/sec into storage
+# --metrics: potatoes/sec sold
 # canceled because of complications with sellers: fluctuating sell prices
 # canceled because fluctuating sell prices canceled:storage limit + upgrades
 # canceled exponential view of time for plots; replaced with pruning
@@ -24,7 +24,7 @@ library(splines)
 # add a stock market - issuing shares, stock price, dividends, buy backs
 # --seed potatoes stick around to produce more
 # --planting should be free
-# reduce network traffic usage
+# reduce network traffic usage of plot
 # prune the data for plots
 # random events (+ resistance to bad events such as drought, disease, insects... via mutations or research)
 # replace one-click upgrades with researchers
@@ -33,16 +33,20 @@ library(splines)
 #   expanding lands vs receiving benefits from that country
 #   dna + mutations 
 #   abilities + skill trees involving physics (spacetime, matter/energy transformation, electromagnetism)
+# remove decimals
+# purchasables cost only have up to 4 significant digits (e.g. 1105030.34 => 1105000)
+# change numerical display: 1000 is 1k, 1000000 is 1m, 1105030 is 1.105m
 
 server <- function(input, output, session) {
   # timers
   tick_rate = 150
-  cash_check = reactiveTimer(100, session)
+  psps_check = reactiveTimer(1000, session)
   crop_growth_check = reactiveTimer(1 * tick_rate, session)
   worker_check = reactiveTimer(4 * tick_rate, session)
   
-  # cash
+  # currencies
   cash = reactiveVal(500)
+  research = reactiveVal(0)
   
   # player upgrades
   plant_quantity = PlantQuantity$new()
@@ -54,8 +58,9 @@ server <- function(input, output, session) {
   planters = Planters$new()
   harvesters = Harvesters$new()
   sellers = Sellers$new()
+  researchers = Researchers$new()
   
-  # crops
+  # market
   price_plant_crop = 0
   price_sell_crop = 2
   crop_name = "Potato"
@@ -88,30 +93,9 @@ server <- function(input, output, session) {
       if (sellers$count() > 0 && stored_crops() > 0) {
         sell_crops(sellers$count())
       }
+      research(research() + researchers$count())
     })
   })
-  
-  plant_crops = function(quantity) {
-    count = min(quantity, cash() / price_plant_crop)
-    planted_crops(planted_crops() + count)
-    cash(cash() - count * price_plant_crop)
-  }
-  
-  harvest_crops = function(quantity) {
-    req(mature_crops() > 0)
-    count = min(quantity, mature_crops())
-    mature_crops(mature_crops() - count)
-    stored_crops(stored_crops() + count)
-  }
-  
-  sell_crops = function(quantity) {
-    req(stored_crops() > 0)
-    count = min(quantity, stored_crops())
-    stored_crops(stored_crops() - count)
-    cash(cash() + count * price_sell_crop)
-    total_crops(total_crops() + count)
-    crops_sold <<- crops_sold + count
-  }
   
   observe({
     crop_growth_check()
@@ -121,15 +105,12 @@ server <- function(input, output, session) {
       random = runif(1, 0, 1)
       
       grown = 0
-      if (random < 0.002 * growth_multiplier$count()) {
-        # up to 1 + 60%
-        grown = round(1 + planted_crops() * random * 3)
-      } else if (random < 0.02 * growth_multiplier$count()) {
-        # up to 1 + 20%
-        grown = round(1 + planted_crops() * random * 0.5)
-      } else if (random < 0.1 * growth_multiplier$count()) {
-        # up to 1 + 10%
-        grown = round(1 + (planted_crops() * random * 0.1))
+      if (random < 0.0015 * growth_multiplier$count()) {
+        grown = ceiling(planted_crops() * random * 3)
+      } else if (random < 0.01 * growth_multiplier$count()) {
+        grown = ceiling(planted_crops() * random * 0.5)
+      } else if (random < 0.025 * growth_multiplier$count()) {
+        grown = ceiling(planted_crops() * random * 0.1)
       }
       
       if (grown > 0) {
@@ -138,7 +119,7 @@ server <- function(input, output, session) {
     })
   })
   
-  observeEvent(cash_check(), {
+  observeEvent(psps_check(), {
     n = length(sold_history) + 1
     sold_history[n] = crops_sold
     sold_history <<- sold_history
@@ -172,7 +153,11 @@ server <- function(input, output, session) {
   })
   
   output$cash <- renderText({
-    paste0("Money: $", round(cash(), 2))
+    paste0("Cash: $", round(cash(), 2))
+  })
+  
+  output$research_points <- renderText({
+    paste0("RP: ", round(research(), 2))
   })
   
   output$crop_info <- renderText({
@@ -195,10 +180,11 @@ server <- function(input, output, session) {
   g_purchasable(input, cash, 'planter_hire', planters)
   g_purchasable(input, cash, 'harvester_hire', harvesters)
   g_purchasable(input, cash, 'seller_hire', sellers)
+  g_purchasable(input, cash, 'researcher_hire', researchers)
   g_purchasable(input, cash, 'improve_planting', plant_quantity)
   g_purchasable(input, cash, 'improve_selling', sell_quantity)
-  g_purchasable(input, cash, 'improve_growth', growth_multiplier)
-  g_purchasable(input, cash, 'improve_extra_crops', crops_multiplier)
+  g_purchasable(input, research, 'improve_growth', growth_multiplier)
+  g_purchasable(input, research, 'improve_extra_crops', crops_multiplier)
 
   output$hiring <- renderUI({
     div(
@@ -207,7 +193,9 @@ server <- function(input, output, session) {
       h4("Hire a harvester"),
       actionButton("harvester_hire", paste0("$", round(harvesters$price$.(), 2))),
       h4("Hire a seller"),
-      actionButton("seller_hire", paste0("$", round(sellers$price$.(), 2)))
+      actionButton("seller_hire", paste0("$", round(sellers$price$.(), 2))),
+      h4("Hire a researcher"),
+      actionButton("researcher_hire", paste0("$", round(researchers$price$.(), 2)))
     )
   })
   
@@ -222,16 +210,38 @@ server <- function(input, output, session) {
   
   output$research <- renderUI({
     div(
-      h4("Researching new seeds increases potato yields by 8%"),
-      actionButton("improve_extra_crops", paste0("$", round(crops_multiplier$price$.(), 2))),
-      h4("Fertilizer improves chance for potatoes to mature by 10%"),
-      actionButton("improve_growth", paste0("$", round(growth_multiplier$price$.(), 2)))
+      h4("Fertilized plants have increased yields at maturity"),
+      actionButton("improve_growth", paste(round(growth_multiplier$price$.(), 2), "RP")),
+      h4("Higher quality seeds improves the chance for plants to mature"),
+      actionButton("improve_extra_crops", paste(round(crops_multiplier$price$.(), 2), "RP"))
     )
   })
   
   output$psps_plot <- renderHighchart({
     sold_plot()
   })
+  
+  plant_crops = function(quantity) {
+    count = min(quantity, cash() / price_plant_crop)
+    planted_crops(planted_crops() + count)
+    cash(cash() - count * price_plant_crop)
+  }
+  
+  harvest_crops = function(quantity) {
+    req(mature_crops() > 0)
+    count = min(quantity, mature_crops())
+    mature_crops(mature_crops() - count)
+    stored_crops(stored_crops() + count)
+  }
+  
+  sell_crops = function(quantity) {
+    req(stored_crops() > 0)
+    count = min(quantity, stored_crops())
+    stored_crops(stored_crops() - count)
+    cash(cash() + count * price_sell_crop)
+    total_crops(total_crops() + count)
+    crops_sold <<- crops_sold + count
+  }
   
 }
 

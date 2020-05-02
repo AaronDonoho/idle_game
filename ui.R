@@ -8,6 +8,7 @@ ui <- fluidPage(
     column(
       4,
       textOutput("cash"),
+      textOutput("research_points"),
       verbatimTextOutput("crop_info"),
       actionButton("plant_crop", "Plant"),
       actionButton("harvest_crop", "Harvest"),
@@ -16,12 +17,12 @@ ui <- fluidPage(
       tabsetPanel(
        type = "tabs",
        tabPanel(
-         "Hiring",
-         uiOutput("hiring") 
-       ),
-       tabPanel(
          "Enhancements",
          uiOutput("enhancements") 
+       ),
+       tabPanel(
+         "Hiring",
+         uiOutput("hiring") 
        ),
        tabPanel(
          "Research",

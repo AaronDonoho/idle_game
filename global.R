@@ -4,12 +4,12 @@ library(R6)
 source('./classes/Purchasable.R')
 
 g_purchasable = FunctionGenerator(
-  function(input, cash, event, purchasable) {
+  function(input, currency, event, item) {
     observeEvent(input[[event]], {
-      req(cash() >= purchasable$price$.())
-      cash(cash() - purchasable$price$.())
-      purchasable$count((purchasable$count() + purchasable$gain_add) * purchasable$gain_mult)
-      purchasable$price$.((purchasable$price$.() + purchasable$price$add) * purchasable$price$mult)
+      req(currency() >= item$price$.())
+      currency(currency() - item$price$.())
+      item$count((item$count() + item$gain_add) * item$gain_mult)
+      item$price$.((item$price$.() + item$price$add) * item$price$mult)
     })
   }
 )
