@@ -8,6 +8,9 @@ ui <- fluidPage(
     column(
       4,
       textOutput("cash"),
+      textOutput("debt"),
+      actionButton("pay_debt", "Pay Debts"),
+      textOutput("interest_rate"),
       textOutput("research_points"),
       verbatimTextOutput("crop_info"),
       actionButton("plant_crop", "Plant"),

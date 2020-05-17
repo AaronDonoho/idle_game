@@ -9,7 +9,7 @@ g_purchasable = FunctionGenerator(
       req(currency() >= item$price$.())
       currency(currency() - item$price$.())
       item$count((item$count() + item$gain_add) * item$gain_mult)
-      item$price$.((item$price$.() + item$price$add) * item$price$mult)
+      item$price$.(ceiling((item$price$.() + item$price$add) * item$price$mult))
     })
   }
 )

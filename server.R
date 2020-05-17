@@ -10,42 +10,45 @@ library(splines)
 # canceled exponential view of time for plots; replaced with pruning
 # --auto-planter
 # --auto-seller
-# improved layout
 # worker wages options:
-#   1. a running debt you can pay off
+# choosing option 1 here because it opens up more interesting choices
+# --  1. a running debt you can pay off
 #     what are the downsides of having debt?
-#       1. could build interest over time
+# --      1. could build interest over time
 #       2. prevents you from performing certain actions
-#   2. a constant drain on funds
-#     what happens when money runs out?
-#       1. workers stop working
-#       2. workers quit 
-#       3. workers work as quickly as your funds will pay them
 # add a stock market - issuing shares, stock price, dividends, buy backs
 # --seed potatoes stick around to produce more
 # --planting should be free
 # reduce network traffic usage of plot
 # prune the data for plots
 # random events (+ resistance to bad events such as drought, disease, insects... via mutations or research)
-# replace one-click upgrades with researchers
-# more upgrades: marketing (increase sell price), worker improvements
+# -- replace one-click upgrades with researchers
+# more upgrades:
+#   marketing (increase sell price)
+#   worker improvements
+#   lower hiring cost
+#   lower interest rates
 # meaningful choices:
 #   expanding lands vs receiving benefits from that country
 #   dna + mutations 
 #   abilities + skill trees involving physics (spacetime, matter/energy transformation, electromagnetism)
-# remove decimals
+# -- remove decimals
 # purchasables cost only have up to 4 significant digits (e.g. 1105030.34 => 1105000)
 # change numerical display: 1000 is 1k, 1000000 is 1m, 1105030 is 1.105m
 
 server <- function(input, output, session) {
   # timers
   tick_rate = 150
+  slow_check = reactiveTimer(30 * tick_rate, session)
+  very_slow_check = reactiveTimer(300 * tick_rate, session)
   psps_check = reactiveTimer(1000, session)
   crop_growth_check = reactiveTimer(1 * tick_rate, session)
   worker_check = reactiveTimer(4 * tick_rate, session)
   
   # currencies
   cash = reactiveVal(500)
+  debt = reactiveVal(0)
+  interest_rate = reactiveVal(0)
   research = reactiveVal(0)
   
   # player upgrades
@@ -53,6 +56,7 @@ server <- function(input, output, session) {
   sell_quantity = SellQuantity$new()
   crops_multiplier = CropsMultiplier$new()
   growth_multiplier = GrowthMultiplier$new()
+  productivity_multiplier = ProductivityMultiplier$new()
   
   # workers
   planters = Planters$new()
@@ -82,16 +86,39 @@ server <- function(input, output, session) {
   total_crops = reactiveVal(0)
   
   observe({
+    slow_check()
+    isolate({
+      interest_rate(log(debt() + 10000) - 9)
+    })
+  })
+  
+  observe({
+    very_slow_check()
+    isolate({
+      interest = round((debt() * interest_rate() / 100))
+      debt(debt() + interest)
+      if (interest > 0) {
+        showNotification(paste0("Debt accrued $", interest," in interest"), type = 'warning')
+      }
+    })
+  })
+  
+  observe({
     worker_check()
     isolate({
+      debt(debt() +
+             planters$count() * planters$recurring_cost+
+             harvesters$count() * harvesters$recurring_cost +
+             sellers$count() * sellers$recurring_cost+
+             researchers$count() * researchers$recurring_cost)
       if (planters$count() > 0 && cash() > 0) {
-        plant_crops(planters$count())
+        plant_crops(planters$count() * productivity_multiplier$count())
       }
       if (harvesters$count() > 0 && mature_crops() > 0) {
-        harvest_crops(harvesters$count())
+        harvest_crops(harvesters$count() * productivity_multiplier$count())
       }
       if (sellers$count() > 0 && stored_crops() > 0) {
-        sell_crops(sellers$count())
+        sell_crops(sellers$count() * productivity_multiplier$count())
       }
       research(research() + researchers$count())
     })
@@ -114,7 +141,7 @@ server <- function(input, output, session) {
       }
       
       if (grown > 0) {
-        mature_crops(mature_crops() + crops_multiplier$count() * grown)
+        mature_crops(mature_crops() + ceiling(crops_multiplier$count() * grown))
       }
     })
   })
@@ -152,8 +179,22 @@ server <- function(input, output, session) {
     sell_crops(sell_quantity$count())
   })
   
+  observeEvent(input$pay_debt, {
+    payment = min(debt(), cash())
+    debt(debt() - payment)
+    cash(cash() - payment)
+  })
+  
   output$cash <- renderText({
     paste0("Cash: $", round(cash(), 2))
+  })
+  
+  output$debt <- renderText({
+    paste0("Debt: $", round(debt(), 2))
+  })
+  
+  output$interest_rate <- renderText({
+    paste0("Interest Rate: ", formatC(interest_rate(), 2), "%")
   })
   
   output$research_points <- renderText({
@@ -170,12 +211,18 @@ server <- function(input, output, session) {
   })
   
   output$crop_table <- renderTable({
-    data.frame(growing = planted_crops(), mature = mature_crops(), storage = stored_crops(), sold = total_crops())
-  })
+    data.frame(growing = planted_crops(),
+               mature = mature_crops(),
+               storage = stored_crops(),
+               sold = total_crops())
+  }, digits = 0)
   
   output$worker_table <- renderTable({
-    data.frame(planters = planters$count(), harvesters = harvesters$count(), sellers = sellers$count())
-  })
+    data.frame(planters = planters$count(),
+               harvesters = harvesters$count(),
+               sellers = sellers$count(),
+               researchers = researchers$count())
+  }, digits = 0)
   
   g_purchasable(input, cash, 'planter_hire', planters)
   g_purchasable(input, cash, 'harvester_hire', harvesters)
@@ -185,6 +232,7 @@ server <- function(input, output, session) {
   g_purchasable(input, cash, 'improve_selling', sell_quantity)
   g_purchasable(input, research, 'improve_growth', growth_multiplier)
   g_purchasable(input, research, 'improve_extra_crops', crops_multiplier)
+  g_purchasable(input, research, 'increased_productivity', productivity_multiplier)
 
   output$hiring <- renderUI({
     div(
@@ -213,7 +261,9 @@ server <- function(input, output, session) {
       h4("Fertilized plants have increased yields at maturity"),
       actionButton("improve_growth", paste(round(growth_multiplier$price$.(), 2), "RP")),
       h4("Higher quality seeds improves the chance for plants to mature"),
-      actionButton("improve_extra_crops", paste(round(crops_multiplier$price$.(), 2), "RP"))
+      actionButton("improve_extra_crops", paste(crops_multiplier$price$.(), "RP")),
+      h4("Increase the productivity of laborers"),
+      actionButton("increased_productivity", paste(productivity_multiplier$price$.(), "RP"))
     )
   })
   
