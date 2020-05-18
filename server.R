@@ -2,40 +2,6 @@ library(shiny)
 library(highcharter)
 library(splines)
 
-# what's next?
-# --replace plot with plotly or similar
-# --metrics: potatoes/sec sold
-# canceled because of complications with sellers: fluctuating sell prices
-# canceled because fluctuating sell prices canceled:storage limit + upgrades
-# canceled exponential view of time for plots; replaced with pruning
-# --auto-planter
-# --auto-seller
-# worker wages options:
-# choosing option 1 here because it opens up more interesting choices
-# --  1. a running debt you can pay off
-#     what are the downsides of having debt?
-# --      1. could build interest over time
-#       2. prevents you from performing certain actions
-# add a stock market - issuing shares, stock price, dividends, buy backs
-# --seed potatoes stick around to produce more
-# --planting should be free
-# reduce network traffic usage of plot
-# prune the data for plots
-# random events (+ resistance to bad events such as drought, disease, insects... via mutations or research)
-# -- replace one-click upgrades with researchers
-# more upgrades:
-#   marketing (increase sell price)
-#   worker improvements
-#   lower hiring cost
-#   lower interest rates
-# meaningful choices:
-#   expanding lands vs receiving benefits from that country
-#   dna + mutations 
-#   abilities + skill trees involving physics (spacetime, matter/energy transformation, electromagnetism)
-# -- remove decimals
-# purchasables cost only have up to 4 significant digits (e.g. 1105030.34 => 1105000)
-# change numerical display: 1000 is 1k, 1000000 is 1m, 1105030 is 1.105m
-
 server <- function(input, output, session) {
   # timers
   tick_rate = 150
