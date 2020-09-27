@@ -1,5 +1,6 @@
 library(shiny)
 library(shinythemes)
+library(highcharter)
 
 ui <- fluidPage(
   theme = shinythemes::shinytheme("superhero"),

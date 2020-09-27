@@ -19,6 +19,16 @@ Purchasable = R6Class(
   )
 )
 
+LabEquipment = R6Class(
+  "Lab Equipment",
+  inherit = Purchasable,
+  public = list(
+    initialize = function(price = Price$new(500, 0, 2), recurring_cost = 0, count = 0) {
+      super$initialize(price = price, recurring_cost = recurring_cost, count = count)
+    }
+  )
+)
+
 Planters = R6Class(
   "Planters",
   inherit = Purchasable,
@@ -44,6 +54,16 @@ Sellers = R6Class(
   inherit = Purchasable,
   public = list(
     initialize = function(price = Price$new(200, 0, 1.12), recurring_cost = 1, count = 0) {
+      super$initialize(price = price, recurring_cost = recurring_cost, count = count)
+    }
+  )
+)
+
+Marketers = R6Class(
+  "Marketers",
+  inherit = Purchasable,
+  public = list(
+    initialize = function(price = Price$new(250, 0, 1.31), recurring_cost = 1, count = 0) {
       super$initialize(price = price, recurring_cost = recurring_cost, count = count)
     }
   )
