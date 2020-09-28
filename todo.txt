@@ -29,6 +29,7 @@ FEATURES:
    expanding lands vs receiving benefits from that country
    dna + mutations 
    abilities + skill trees involving physics (spacetime, matter/energy transformation, electromagnetism)
+ Display a clock showing daily cycles (debt accrual at end of day)
 
 POLISH:
  purchasables cost only have up to 4 significant digits (e.g. 1105030.34 => 1105000)

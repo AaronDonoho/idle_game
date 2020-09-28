@@ -13,7 +13,7 @@ server <- function(input, output, session) {
   worker_check = reactiveTimer(4 * tick_rate, session)
   
   # currencies
-  cash = reactiveVal(5000)
+  cash = reactiveVal(500)
   debt = reactiveVal(0)
   interest_rate = reactiveVal(0)
   research = reactiveVal(0)
@@ -123,10 +123,6 @@ server <- function(input, output, session) {
     
     req(n > 5)
     
-    # if (n > 200) {
-    #   revenue_history <<- prune(revenue_history, 100)
-    # }
-    
     spline = smooth.spline(sold_history, NULL, df=min(n, 16))$y
     
     sold_plot(
@@ -155,19 +151,19 @@ server <- function(input, output, session) {
   })
   
   output$cash <- renderText({
-    paste0("Cash: $", round(cash(), 2))
+    paste0("Cash: $", suffix(cash()))
   })
   
   output$debt <- renderText({
-    paste0("Debt: $", round(debt(), 2))
+    paste0("Debt: $", suffix(debt()))
   })
   
   output$interest_rate <- renderText({
-    paste0("Interest Rate: ", formatC(interest_rate(), 2), "%")
+    paste0("Interest Rate: ", formatC(interest_rate(), 2, format = 'f'), "%")
   })
   
   output$research_points <- renderText({
-    paste0("RP: ", round(research(), 2))
+    paste0("RP: ", suffix(research()))
   })
   
   output$crop_info <- renderText({
@@ -180,10 +176,10 @@ server <- function(input, output, session) {
   })
   
   output$crop_table <- renderTable({
-    data.frame(growing = planted_crops(),
-               mature = mature_crops(),
-               storage = stored_crops(),
-               sold = total_crops())
+    data.frame(growing = suffix(planted_crops()),
+               mature = suffix(mature_crops()),
+               storage = suffix(stored_crops()),
+               sold = suffix(total_crops()))
   }, digits = 0)
   
   output$worker_table <- renderTable({
