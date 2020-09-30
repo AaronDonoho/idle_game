@@ -81,7 +81,7 @@ server <- function(input, output, session) {
              sellers$count() * sellers$recurring_cost +
              researchers$count() * researchers$recurring_cost +
              marketers$count() * marketers$recurring_cost)
-      if (planters$count() > 0 && cash() > 0) {
+      if (planters$count() > 0) {
         plant_crops(planters$count() * productivity_multiplier$count())
       }
       if (harvesters$count() > 0 && mature_crops() > 0) {
@@ -244,9 +244,7 @@ server <- function(input, output, session) {
   })
   
   plant_crops = function(quantity) {
-    count = min(quantity, cash() / price_plant_crop)
-    planted_crops(planted_crops() + count)
-    cash(cash() - count * price_plant_crop)
+    planted_crops(planted_crops() + quantity)
   }
   
   harvest_crops = function(quantity) {
