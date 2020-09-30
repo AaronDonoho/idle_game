@@ -205,37 +205,37 @@ server <- function(input, output, session) {
   output$hiring <- renderUI({
     div(
       h4("Hire a planter"),
-      actionButton("planter_hire", paste0("$", round(planters$price$.(), 2))),
+      actionButton("planter_hire", paste0("$", suffix(planters$price$.()))),
       h4("Hire a harvester"),
-      actionButton("harvester_hire", paste0("$", round(harvesters$price$.(), 2))),
+      actionButton("harvester_hire", paste0("$", suffix(harvesters$price$.()))),
       h4("Hire a seller"),
-      actionButton("seller_hire", paste0("$", round(sellers$price$.(), 2))),
+      actionButton("seller_hire", paste0("$", suffix(sellers$price$.()))),
       h4("Hire a marketer"),
-      actionButton("marketer_hire", paste0("$", round(marketers$price$.(), 2))),
+      actionButton("marketer_hire", paste0("$", suffix(marketers$price$.()))),
       h4("Hire a researcher"),
-      actionButton("researcher_hire", paste0("$", round(researchers$price$.(), 2)))
+      actionButton("researcher_hire", paste0("$", suffix(researchers$price$.())))
     )
   })
   
   output$enhancements <- renderUI({
     div(
       h4("Plant an extra potato"),
-      actionButton("improve_planting", paste0("$", round(plant_quantity$price$.(), 2))),
+      actionButton("improve_planting", paste0("$", suffix(plant_quantity$price$.()))),
       h4("Sell an extra potato"),
-      actionButton("improve_selling", paste0("$", round(sell_quantity$price$.(), 2))),
+      actionButton("improve_selling", paste0("$", suffix(sell_quantity$price$.()))),
       h4("Improve lab equipment for more productive researchers"),
-      actionButton("improve_lab_equipment", paste0("$", round(lab_equipment$price$.(), 2)))
+      actionButton("improve_lab_equipment", paste0("$", suffix(lab_equipment$price$.())))
     )
   })
   
   output$research <- renderUI({
     div(
       h4("Fertilized plants have increased yields at maturity"),
-      actionButton("improve_growth", paste(round(growth_multiplier$price$.(), 2), "RP")),
+      actionButton("improve_growth", paste(suffix(growth_multiplier$price$.()), "RP")),
       h4("Higher quality seeds improves the chance for plants to mature"),
-      actionButton("improve_extra_crops", paste(crops_multiplier$price$.(), "RP")),
+      actionButton("improve_extra_crops", paste(suffix(crops_multiplier$price$.()), "RP")),
       h4("Increase the productivity of laborers"),
-      actionButton("increased_productivity", paste(productivity_multiplier$price$.(), "RP"))
+      actionButton("increased_productivity", paste(suffix(productivity_multiplier$price$.()), "RP"))
     )
   })
   
