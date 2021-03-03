@@ -8,12 +8,9 @@ ui <- fluidPage(
   fluidRow(
     column(
       4,
-      textOutput("cash"),
-      textOutput("debt"),
+      verbatimTextOutput("vital_info"),
       actionButton("pay_debt", "Pay Debts"),
-      textOutput("interest_rate"),
-      textOutput("research_points"),
-      verbatimTextOutput("crop_info"),
+      br(),
       actionButton("plant_crop", "Plant"),
       actionButton("harvest_crop", "Harvest"),
       actionButton("sell_crop", "Sell"),
@@ -37,9 +34,7 @@ ui <- fluidPage(
     column(
       4,
       uiOutput("table_header"),
-      tableOutput("crop_table"),
-      h3("Workers"),
-      tableOutput("worker_table")),
+      tableOutput("crop_table")),
     column(
       4,
       h3("Potatoes sold per second"),

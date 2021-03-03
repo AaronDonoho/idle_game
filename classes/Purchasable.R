@@ -49,8 +49,8 @@ Harvesters = R6Class(
   )
 )
 
-Sellers = R6Class(
-  "Sellers",
+Haulers = R6Class(
+  "Haulers",
   inherit = Purchasable,
   public = list(
     initialize = function(price = Price$new(200, 0, 1.12), recurring_cost = 1, count = 0) {
@@ -74,6 +74,16 @@ Researchers = R6Class(
   inherit = Purchasable,
   public = list(
     initialize = function(price = Price$new(300, 0, 1.28), recurring_cost = 1, count = 0) {
+      super$initialize(price = price, recurring_cost = recurring_cost, count = count)
+    }
+  )
+)
+
+Accountants = R6Class(
+  "Accountants",
+  inherit = Purchasable,
+  public = list(
+    initialize = function(price = Price$new(500, 0, 1.6), recurring_cost = 1, count = 0) {
       super$initialize(price = price, recurring_cost = recurring_cost, count = count)
     }
   )
@@ -103,7 +113,7 @@ GrowthMultiplier = R6Class(
   "GrowthMultiplier",
   inherit = Purchasable,
   public = list(
-    initialize = function(price = Price$new(150, 0, 1.55), recurring_cost = 0, count = 1, gain_add = 0.02, gain_mult = 1.02) {
+    initialize = function(price = Price$new(150, 0, 1.55), recurring_cost = 0, count = 1, gain_add = 0.03, gain_mult = 1.03) {
       super$initialize(price = price, recurring_cost = recurring_cost, count = count, gain_add = gain_add, gain_mult = gain_mult)
     }
   )
@@ -113,7 +123,7 @@ CropsMultiplier = R6Class(
   "CropsMultiplier",
   inherit = Purchasable,
   public = list(
-    initialize = function(price = Price$new(300, 0, 1.62), recurring_cost = 0, count = 1, gain_add = 0.01, gain_mult = 1.03) {
+    initialize = function(price = Price$new(300, 0, 1.62), recurring_cost = 0, count = 1, gain_add = 0.01, gain_mult = 1.06) {
       super$initialize(price = price, recurring_cost = recurring_cost, count = count, gain_add = gain_add, gain_mult = gain_mult)
     }
   )

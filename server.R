@@ -3,8 +3,9 @@ library(highcharter)
 library(splines)
 
 server <- function(input, output, session) {
+  
   # timers
-  tick_rate = 150
+  tick_rate = 15
   slow_check = reactiveTimer(30 * tick_rate, session)
   very_slow_check = reactiveTimer(300 * tick_rate, session)
   psps_check_interval = 50 * tick_rate
@@ -29,9 +30,10 @@ server <- function(input, output, session) {
   # workers
   planters = Planters$new()
   harvesters = Harvesters$new()
-  sellers = Sellers$new()
+  haulers = Haulers$new()
   marketers = Marketers$new()
   researchers = Researchers$new()
+  accountants = Accountants$new()
   
   # market
   price_plant_crop = 0
@@ -57,7 +59,7 @@ server <- function(input, output, session) {
   observe({
     slow_check()
     isolate({
-      interest_rate(log(debt() + 10000) - 9)
+      interest_rate((log(debt() + 10000) - 9) / log(2 + accountants$count()))
     })
   })
   
@@ -78,17 +80,18 @@ server <- function(input, output, session) {
       debt(debt() +
              planters$count() * planters$recurring_cost +
              harvesters$count() * harvesters$recurring_cost +
-             sellers$count() * sellers$recurring_cost +
+             haulers$count() * haulers$recurring_cost +
              researchers$count() * researchers$recurring_cost +
-             marketers$count() * marketers$recurring_cost)
+             marketers$count() * marketers$recurring_cost +
+             accountants$count() * accountants$recurring_cost)
       if (planters$count() > 0) {
         plant_crops(planters$count() * productivity_multiplier$count())
       }
       if (harvesters$count() > 0 && mature_crops() > 0) {
         harvest_crops(harvesters$count() * productivity_multiplier$count())
       }
-      if (sellers$count() > 0 && stored_crops() > 0) {
-        sell_crops(sellers$count() * productivity_multiplier$count())
+      if (haulers$count() > 0 && stored_crops() > 0) {
+        sell_crops(haulers$count() * productivity_multiplier$count())
       }
       research(research() + researchers$count() * (lab_equipment$count() + 1))
     })
@@ -150,25 +153,14 @@ server <- function(input, output, session) {
     cash(cash() - payment)
   })
   
-  output$cash <- renderText({
-    paste0("Cash: $", suffix(cash()))
-  })
-  
-  output$debt <- renderText({
-    paste0("Debt: $", suffix(debt()))
-  })
-  
-  output$interest_rate <- renderText({
-    paste0("Interest Rate: ", formatC(interest_rate(), 2, format = 'f'), "%")
-  })
-  
-  output$research_points <- renderText({
-    paste0("RP: ", suffix(research()))
-  })
-  
-  output$crop_info <- renderText({
-    paste0(crop_name, " seeds cost $", price_plant_crop, "\n",
-           "Mature ", crop_name_plural, " sell for $", price_sell_crop())
+  output$vital_info <- renderText({
+    paste0(
+      "Cash: $", suffix(cash()), "\n",
+      "Debt: $", suffix(debt()), "\n",
+      "Interest Rate: ", formatC(interest_rate(), 2, format = 'f'), "%", "\n",
+      "RP: ", suffix(research()), "\n",
+      "Mature ", crop_name_plural, " can be sold for $", price_sell_crop(), "\n"
+    )
   })
   
   output$table_header <- renderUI({
@@ -182,59 +174,66 @@ server <- function(input, output, session) {
                sold = suffix(total_crops()))
   }, digits = 0)
   
-  output$worker_table <- renderTable({
-    data.frame(planters = planters$count(),
-               harvesters = harvesters$count(),
-               sellers = sellers$count(),
-               researchers = researchers$count(),
-               marketers = marketers$count())
-  }, digits = 0)
-  
   g_purchasable(input, cash, 'planter_hire', planters)
   g_purchasable(input, cash, 'harvester_hire', harvesters)
-  g_purchasable(input, cash, 'seller_hire', sellers)
+  g_purchasable(input, cash, 'hauler_hire', haulers)
   g_purchasable(input, cash, 'marketer_hire', marketers)
   g_purchasable(input, cash, 'researcher_hire', researchers)
+  g_purchasable(input, cash, 'accountant_hire', accountants)
   g_purchasable(input, cash, 'improve_planting', plant_quantity)
   g_purchasable(input, cash, 'improve_selling', sell_quantity)
   g_purchasable(input, cash, 'improve_lab_equipment', lab_equipment)
   g_purchasable(input, research, 'improve_growth', growth_multiplier)
   g_purchasable(input, research, 'improve_extra_crops', crops_multiplier)
   g_purchasable(input, research, 'increased_productivity', productivity_multiplier)
-
+  
   output$hiring <- renderUI({
     div(
-      h4("Hire a planter"),
+      h4("Planters put potatoes in the ground"),
+      h6("[", planters$count(), "]"),
       actionButton("planter_hire", paste0("$", suffix(planters$price$.()))),
-      h4("Hire a harvester"),
+      h4("Harvesters put mature potatoes into storage"),
+      h6("[", harvesters$count(), "]"),
       actionButton("harvester_hire", paste0("$", suffix(harvesters$price$.()))),
-      h4("Hire a seller"),
-      actionButton("seller_hire", paste0("$", suffix(sellers$price$.()))),
-      h4("Hire a marketer"),
+      h4("Haulers sell stored potatoes"),
+      h6("[", haulers$count(), "]"),
+      actionButton("hauler_hire", paste0("$", suffix(haulers$price$.()))),
+      h4("Marketers increase the price of potatoes"),
+      h6("[", marketers$count(), "]"),
       actionButton("marketer_hire", paste0("$", suffix(marketers$price$.()))),
-      h4("Hire a researcher"),
-      actionButton("researcher_hire", paste0("$", suffix(researchers$price$.())))
+      h4("Researchers generate RP"),
+      h6("[", researchers$count(), "]"),
+      actionButton("researcher_hire", paste0("$", suffix(researchers$price$.()))),
+      h4("Accountants reduce the interest rate"),
+      h6("[", accountants$count(), "]"),
+      actionButton("accountant_hire", paste0("$", suffix(accountants$price$.())))
     )
   })
   
   output$enhancements <- renderUI({
     div(
       h4("Plant an extra potato"),
+      h6("[", plant_quantity$count(), "]"),
       actionButton("improve_planting", paste0("$", suffix(plant_quantity$price$.()))),
       h4("Sell an extra potato"),
+      h6("[", sell_quantity$count(), "]"),
       actionButton("improve_selling", paste0("$", suffix(sell_quantity$price$.()))),
       h4("Improve lab equipment for more productive researchers"),
+      h6("[", lab_equipment$count(), "]"),
       actionButton("improve_lab_equipment", paste0("$", suffix(lab_equipment$price$.())))
     )
   })
   
   output$research <- renderUI({
     div(
-      h4("Fertilized plants have increased yields at maturity"),
+      h4("Increase yield amount at maturity"),
+      h6("[x", growth_multiplier$count() %>% round(2), "]"),
       actionButton("improve_growth", paste(suffix(growth_multiplier$price$.()), "RP")),
-      h4("Higher quality seeds improves the chance for plants to mature"),
+      h4("Improve the chance for plants to mature"),
+      h6("[x", crops_multiplier$count() %>% round(2), "]"),
       actionButton("improve_extra_crops", paste(suffix(crops_multiplier$price$.()), "RP")),
       h4("Increase the productivity of laborers"),
+      h6("[x", productivity_multiplier$count() %>% round(2), "]"),
       actionButton("increased_productivity", paste(suffix(productivity_multiplier$price$.()), "RP"))
     )
   })

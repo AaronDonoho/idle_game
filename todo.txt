@@ -11,8 +11,10 @@ PURCHASABLES:
     4. increased risk of disasters
     5. the debt collection monster visits your farm...
      
+WORKERS:
+  haulers should take some time to perform their sell action
+    
 RESEARCH:
-   lower interest rates
 
 MARKET:
   add potato derivatives - diced, canned, frozen hash, mashed, etc
@@ -34,4 +36,3 @@ FEATURES:
 
 POLISH:
  change theme from potatoes... it's been done
- include current and upgraded values on research labels (e.g. "Increase the productivity of laborers (1x -> 1.12x)")
