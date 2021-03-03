@@ -5,7 +5,7 @@ library(splines)
 server <- function(input, output, session) {
   
   # timers
-  tick_rate = 15
+  tick_rate = 150
   slow_check = reactiveTimer(30 * tick_rate, session)
   very_slow_check = reactiveTimer(300 * tick_rate, session)
   psps_check_interval = 50 * tick_rate
